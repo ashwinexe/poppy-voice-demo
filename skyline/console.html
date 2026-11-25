@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skyline Console</title>
+<style>
+  :root { --ink:#0b1f3a; --sky:#2f80ed; --line:#d5e1f0; --muted:#5b6b82; --bg:#f4f8fd; --ok:#1f9d55; --warn:#b7791f; --bad:#c53030; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 ui-sans-serif,system-ui,-apple-system,sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; background:var(--ink); color:#fff; }
+  header b { font-size:16px; letter-spacing:.02em; }
+  header span { color:#a9c3e6; font-size:13px; }
+  main { display:grid; grid-template-columns: 1fr 320px; gap:20px; padding:20px 24px; max-width:1200px; margin:0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column-reverse; gap:8px; }
+  li { display:grid; grid-template-columns:64px 140px 1fr; gap:10px; align-items:baseline; padding:8px 10px; border-radius:10px; background:#f9fbfe; }
+  .t { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .k { font-weight:600; }
+  .k.request { color:var(--sky); } .k.challenge { color:var(--warn); } .k.error { color:var(--bad); }
+  .k.operation, .k.signed.in, .k[data-k="sign-in approved"], .k[data-k="signed in"] { color:var(--ok); }
+  code { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; background:#eef3fa; padding:1px 6px; border-radius:6px; }
+  .who { color:var(--muted); }
+  .booking div { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); }
+  .booking div:last-child { border:0; }
+  .empty { color:var(--muted); }
+  li.empty { display:block; }
+</style>
+</head>
+<body>
+<header><b>Skyline Air · company console</b><span>What Skyline sees from personal agents</span></header>
+<main>
+  <section class="panel"><h2>Activity</h2><ol id="log"><li class="empty">Waiting for an agent…</li></ol></section>
+  <aside class="panel booking"><h2>Booking BK7Q2M</h2><div id="booking"></div></aside>
+</main>
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+function describe(e) {
+  switch (e.kind) {
+    case 'request':
+      return `<code>${esc(e.method)} ${esc(e.path)}</code> <span class="who">from user <code>${esc(e.user_id)}</code>` +
+        (e.account ? ` · signed in as ${esc(e.account)} · ${esc((e.scopes || []).join(' '))}` : ' · signed out, pseudonymous') + '</span>';
+    case 'challenge': return `asked for sign-in: <code>${esc(e.scope)}</code> (${esc(e.error)})`;
+    case 'sign-in started': return `device code <code>${esc(e.user_code)}</code> for <code>${esc((e.scopes || []).join(' '))}</code>`;
+    case 'sign-in approved': return `${esc(e.account)} approved <code>${esc((e.scopes || []).join(' '))}</code> on Skyline's page`;
+    case 'signed in': return `tokens issued to the agent for ${esc(e.account)}`;
+    case 'operation': return `${esc(e.status)} <code>${esc(e.operation_id)}</code>` +
+      (e.total ? ` · €${esc(e.total)}` : '') + (e.input_type ? ` · approver ${esc(e.approver)}, by ${esc(e.input_type)}` : '');
+    case 'error': return `<code>${esc(e.error)}</code> ${esc(e.detail)}`;
+    default: return esc(JSON.stringify(e));
+  }
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/console/activity.json', { cache: 'no-store' });
+    const { activity, bookings } = await r.json();
+    const log = document.getElementById('log');
+    log.innerHTML = activity.length
+      ? activity.map((e) => `<li><span class="t">${esc(e.t)}</span><span class="k" data-k="${esc(e.kind)}">${esc(e.kind)}</span><span>${describe(e)}</span></li>`).join('')
+      : '<li class="empty">Waiting for an agent…</li>';
+    const b = bookings[0];
+    document.getElementById('booking').innerHTML = b ? [
+      ['Passenger', b.passenger], ['Flight', b.flight], ['Seat', b.seat], ['Fare paid', `€${b.fare_paid.amount}`],
+    ].map(([k, v]) => `<div><span class="who">${k}</span><b>${esc(v)}</b></div>`).join('') : '';
+  } catch (_) { /* server restarting */ }
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wren</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Wren: the user's own agent (Gradium neutrals, lime = live voice and your confirmations) */
+    --bg: #121314; --surface: #1d1e21; --surface-2: #26272b;
+    --hair: #ffffff1f; --hair-2: #ffffff38;
+    --ink: #ffffff; --ink-soft: #f2f2f2; --muted: #a8a8a8; --gray: #707070;
+    --lime: #daff52; --lime-ink: #141a00; --breath: #91fffa;
+    --warm: #ffb592; --red: #ff7a6b; --ok: #9ad29a;
+    /* Skyline: another company's territory */
+    --sky: #8cc0ff; --sky-deep: #0b1118; --sky-surface: #111a24; --sky-raise: #17222f;
+    --sky-line: rgba(140, 192, 255, .18); --sky-muted: #93a7bc;
+
+    --display: "ABC Favorit", "ABCFavorit Trial", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --body: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --accent: "Komuna Var", "Komuna", "IBM Plex Mono", ui-monospace, monospace;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --split: 46%;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink-soft); font: 15px/1.55 var(--body); -webkit-font-smoothing: antialiased; }
+  button, input, select { font: inherit; color: inherit; }
+  code { font-family: var(--mono); font-size: .86em; }
+  a { color: inherit; }
+  .eyebrow { font: 100 11px/16px var(--accent); letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); }
+
+  .app { position: relative; height: 100%; display: grid; grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); }
+
+  /* ---- Wren ---------------------------------------------------------------- */
+  .talk { display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+  .who { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "orb id by"; align-items: center; column-gap: 16px; padding: 24px 44px 12px 28px; }
+  #orb { grid-area: orb; width: 76px; height: 76px; display: block; }
+  .id { grid-area: id; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .name { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .name b { font: 400 28px/1 var(--display); color: var(--ink); letter-spacing: -.01em; }
+  #voice { appearance: none; -webkit-appearance: none; max-width: 100%; min-width: 0; text-overflow: ellipsis; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8a8a8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 12px; border: 1px solid var(--hair); border-radius: 999px; padding: 5px 30px 5px 12px; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+  #voice:hover { border-color: var(--hair-2); }
+  .who .state { display: flex; align-items: center; gap: 8px; font: 400 16px/20px var(--display); color: var(--muted); }
+  .who .state i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--gray); }
+  .who .state.live { color: var(--ink); }
+  .who .state.live i { background: var(--lime); animation: ping 1.8s infinite; }
+  .who .state.speaking #stateText { display: none; }
+  .who .state.speaking::after { content: "Wren is speaking"; color: var(--ink); }
+  .who .state.speaking i { background: var(--lime); animation: ping .8s infinite; }
+  .by { grid-area: by; align-self: start; display: inline-flex; align-items: center; gap: 8px; padding-top: 4px; color: var(--muted); font: 400 12px/1 var(--display); text-decoration: none; white-space: nowrap; transition: color .2s; }
+  .by svg { height: 15px; width: auto; display: block; }
+  .by:hover { color: var(--ink); }
+  .mini { display: none; }
+
+  #transcript { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 44px 20px 32px; display: flex; flex-direction: column; gap: 16px; }
+  .msg { max-width: min(84%, 620px); animation: rise .35s var(--ease); overflow-wrap: anywhere; }
+  .msg-agent { align-self: flex-start; position: relative; padding-left: 20px; font: 400 19px/1.45 var(--display); color: var(--ink); }
+  .msg-agent::before { content: ""; position: absolute; left: 0; top: .55em; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); }
+  .msg-agent:has(~ .msg-agent) { color: var(--muted); font-size: 17px; }
+  .msg-agent:has(~ .msg-agent)::before { background: var(--gray); }
+  body.speaking .msg-agent:not(:has(~ .msg-agent))::before { animation: ping .8s infinite; }
+  .msg-user { align-self: flex-end; background: var(--surface-2); color: var(--ink-soft); padding: 10px 14px 8px; border-radius: 12px 12px 4px 12px; }
+  .msg-user::after { content: "Spoken"; display: block; margin-top: 2px; text-align: right; font: 100 10px/14px var(--accent); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .msg-user.typed::after { content: "Typed"; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+  .start { margin: auto 0; padding: 0 0 6vh; display: flex; flex-direction: column; gap: 16px; max-width: 560px; }
+  .start h1 { margin: 0; font: 400 44px/1.05 var(--display); color: var(--ink); letter-spacing: -.02em; }
+  .start h1 span { color: var(--gray); }
+  .start p { margin: 0; color: var(--muted); max-width: 440px; }
+
+  .cues { display: flex; align-items: flex-start; gap: 14px; padding: 4px 44px 12px 32px; }
+  .cues .eyebrow { flex: none; padding-top: 9px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+  .chip { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px 6px 7px; border: 1px solid var(--hair); background: transparent; border-radius: 8px; font-size: 13.5px; line-height: 1.2; color: var(--muted); cursor: pointer; text-align: left; transition: border-color .2s, color .2s, background .2s, opacity .3s; }
+  .chip small { display: grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 4px; background: var(--surface); font: 500 11px/1 var(--mono); color: var(--muted); }
+  .chip:hover { border-color: var(--hair-2); color: var(--ink); }
+  .chip.next { border-color: var(--ink-soft); background: var(--surface); color: var(--ink); }
+  .chip.next small { background: var(--ink-soft); color: var(--bg); }
+  .chip.used { opacity: .5; }
+  .chip.used small { font-size: 0; }
+  .chip.used small::before { content: "✓"; font-size: 12px; }
+
+  .bar { display: flex; align-items: center; gap: 12px; padding: 6px 44px 28px 28px; }
+  .field { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; height: 56px; padding: 0 6px 0 16px; background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; }
+  .field:focus-within { border-color: var(--hair-2); }
+  #text { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 0; font-size: 16px; }
+  #text::placeholder { color: var(--gray); }
+  .round { flex: none; border: 0; display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .round svg { width: 20px; height: 20px; }
+  #send { width: 44px; height: 44px; border-radius: 8px; background: var(--surface-2); color: var(--gray); transition: background .2s, color .2s; }
+  #send:not(:disabled) { background: var(--ink-soft); color: var(--bg); }
+  #send:disabled { cursor: default; }
+  #mic { --lvl: 0; position: relative; width: 64px; height: 64px; border-radius: 50%; background: var(--ink-soft); color: var(--bg); transition: background .25s, color .25s; }
+  #mic svg { position: relative; z-index: 1; width: 26px; height: 26px; }
+  #mic .slash { display: none; }
+  #mic::before, #mic::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; }
+  #mic:not(.on):not(.muted)::before { border: 1px solid var(--ink-soft); animation: invite 2.6s var(--ease) infinite; }
+  #mic.on { background: var(--lime); color: var(--lime-ink); }
+  #mic.on::before { border: 2px solid var(--lime); opacity: calc(.3 + var(--lvl) * .7); transform: scale(calc(1.12 + var(--lvl) * .45)); transition: transform 80ms linear, opacity 80ms linear; }
+  #mic.on::after { background: var(--lime); opacity: calc(var(--lvl) * .22); transform: scale(calc(1.2 + var(--lvl) * .9)); transition: transform 80ms linear, opacity 80ms linear; }
+  #mic.muted { background: var(--surface-2); color: var(--muted); }
+  #mic.muted .slash { display: inline; }
+  @keyframes invite { 0% { opacity: .5; transform: scale(1); } 100% { opacity: 0; transform: scale(1.45); } }
+  #hang { width: 44px; height: 44px; border-radius: 8px; background: transparent; border: 1px solid var(--hair); color: var(--muted); }
+  #hang:hover { color: var(--red); border-color: rgba(255, 122, 107, .45); }
+  #hang[hidden] { display: none; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(218, 255, 82, .55); } 100% { box-shadow: 0 0 0 10px rgba(218, 255, 82, 0); } }
+
+  /* ---- The seam: Poppy between the two parties ----------------------------- */
+  .seam { position: absolute; top: 0; bottom: 0; left: var(--split); width: 1px; background: var(--sky-line); z-index: 5; pointer-events: none; }
+  .seam span { position: absolute; z-index: 1; top: 50%; left: 0; transform: translate(-50%, -50%); padding: 7px 11px; border-radius: 999px; background: var(--bg); border: 1px solid var(--hair-2); font: 100 10px/1 var(--accent); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .seam.ping span { animation: seamflash .9s ease-out; }
+  .seam b { position: absolute; top: 50%; left: -110px; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px var(--lime); animation: travel 1s var(--ease) forwards; }
+  @keyframes travel { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateX(220px); opacity: 0; } }
+  @keyframes seamflash { 0%, 30% { border-color: var(--lime); color: var(--ink); } }
+
+  /* ---- Skyline ------------------------------------------------------------- */
+  .side { min-height: 0; overflow-y: auto; background: var(--sky-deep); padding: 24px 32px 32px 44px; display: flex; flex-direction: column; gap: 24px; }
+  .co { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--sky-line); }
+  .co .logo { width: 48px; height: 48px; flex: none; border-radius: 10px; background: var(--sky); color: #06121f; display: grid; place-items: center; }
+  .co .logo svg { width: 24px; height: 24px; }
+  .co-id { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .co .eyebrow { color: var(--sky-muted); }
+  .co-id .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .co b { font: 400 24px/1 var(--display); color: var(--ink); }
+  .addr { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 10px; border-radius: 6px; background: var(--sky-surface); border: 1px solid var(--sky-line); font: 12px/18px var(--mono); color: var(--sky-muted); }
+  .addr svg { width: 12px; height: 12px; flex: none; }
+  .addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .co .pill { margin-left: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--sky-line); font-size: 13px; color: var(--sky-muted); white-space: nowrap; transition: all .4s; }
+  .co .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gray); }
+  .co .pill.on { background: rgba(140, 192, 255, .12); border-color: var(--sky); color: var(--sky); }
+  .co .pill.on::before { background: var(--sky); }
+
+  .flow { display: grid; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); gap: 32px; align-items: start; }
+  .trail-wrap { position: sticky; top: 0; }
+  .trail-wrap .eyebrow { color: var(--sky-muted); }
+  .trail { list-style: none; margin: 18px 0 0; padding: 0; counter-reset: s; }
+  .trail li { counter-increment: s; position: relative; min-height: 64px; padding: 0 0 22px 52px; color: var(--ink); opacity: .42; transition: opacity .5s; }
+  .trail li:last-child { padding-bottom: 0; min-height: 0; }
+  .trail li::before { content: counter(s, decimal-leading-zero); position: absolute; z-index: 1; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 500 12px/1 var(--mono); color: var(--sky-muted); border: 1px solid var(--sky-line); background: var(--sky-deep); transition: background-color .35s, border-color .35s, color .35s; }
+  .trail li::after { content: ""; position: absolute; left: 17px; top: 40px; bottom: 4px; width: 2px; border-radius: 2px; background: linear-gradient(var(--lime), var(--lime)) top / 100% 0% no-repeat, var(--sky-line); transition: background-size .8s var(--ease) .2s; }
+  .trail li:last-child::after { display: none; }
+  .trail li b { display: block; padding-top: 7px; font: 400 17px/22px var(--display); }
+  .trail li div { margin-top: 4px; font-size: 13px; line-height: 19px; color: var(--sky-muted); }
+  .trail li div code { color: var(--sky); font-size: 12px; overflow-wrap: anywhere; }
+  .trail li.now { opacity: 1; }
+  .trail li.now::before { border-color: var(--warm); color: var(--warm); animation: wait 1.6s infinite; }
+  .trail li.now b { color: var(--warm); }
+  .trail li.lit { opacity: 1; }
+  .trail li.lit::before { content: ""; border-color: var(--lime); background: var(--lime) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141a00' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 18px no-repeat; animation: pop .55s var(--ease); }
+  .trail li.lit::after { background-size: 100% 100%, auto; }
+  .trail li.lit b { animation: litup 1.4s ease-out; }
+  .trail.complete li::before { box-shadow: 0 0 0 4px rgba(218, 255, 82, .12); }
+  @keyframes wait { 0% { box-shadow: 0 0 0 0 rgba(255, 181, 146, .5); } 100% { box-shadow: 0 0 0 12px rgba(255, 181, 146, 0); } }
+  @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  @keyframes litup { 0%, 30% { color: var(--lime); } 100% { color: var(--ink); } }
+
+  .slots { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .slots > div:empty { display: none; }
+  .slots:not(:has(.card))::before { content: "Skyline's answers show up here as Wren works: flights, sign-in, terms."; padding: 20px; border: 1px dashed var(--sky-line); border-radius: 12px; color: var(--sky-muted); font-size: 14px; }
+
+  .card { position: relative; padding: 20px; background: var(--sky-surface); border: 1px solid var(--sky-line); border-radius: 12px; animation: enter .5s var(--ease); transition: border-color .4s, box-shadow .4s; }
+  .card h3 { margin: 0 0 14px; display: flex; align-items: center; gap: 10px; font: 100 11px/16px var(--accent); letter-spacing: 2.5px; text-transform: uppercase; color: var(--sky-muted); }
+  .card.flash { animation: flashcard 1.8s var(--ease); }
+  @keyframes enter { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+  @keyframes flashcard { 0%, 45% { border-color: var(--warm); box-shadow: 0 0 0 4px rgba(255, 181, 146, .2); } }
+
+  /* Hero 1: the sign-in code */
+  .signin { padding: 24px; border-color: var(--sky); box-shadow: 0 28px 70px -30px rgba(140, 192, 255, .55); }
+  .signin .code { display: flex; gap: 8px; margin: 2px 0 18px; }
+  .signin .code span { --i: 0; flex: 1 1 0; min-width: 0; height: clamp(64px, 7vw, 100px); display: grid; place-items: center; border-radius: 8px; background: var(--sky-deep); border: 1px solid var(--sky-line); font: 500 clamp(34px, 4.4vw, 64px)/1 var(--mono); color: var(--ink); animation: digit .55s var(--ease) both; animation-delay: calc(var(--i) * 70ms + .15s); }
+  .signin .code i { flex: 0 0 12px; align-self: center; height: 2px; background: var(--sky-line); }
+  @keyframes digit { from { opacity: 0; transform: translateY(10px); } }
+  .signin p { margin: 0 0 18px; color: var(--sky-muted); font-size: 14px; }
+  .signin .row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 18px; border-radius: 8px; background: var(--sky); color: #06121f; font: 400 15px/1 var(--display); text-decoration: none; transition: background .2s; }
+  .btn:hover { background: #acd1ff; }
+  .btn svg { width: 16px; height: 16px; }
+  .waiting { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--warm); }
+  .waiting::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warm); animation: wait 1.6s infinite; }
+
+  /* Hero 2: the terms */
+  .terms { padding: 24px; }
+  .terms.is-asking { border-color: var(--warm); box-shadow: 0 28px 70px -32px rgba(255, 181, 146, .4); }
+  .terms.done { border-color: var(--lime); box-shadow: 0 28px 70px -32px rgba(218, 255, 82, .35); }
+  .terms .total { display: flex; align-items: baseline; font: 400 clamp(60px, 6.6vw, 104px)/.92 var(--display); letter-spacing: -.035em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .terms .total .cur { font-size: .5em; letter-spacing: 0; color: var(--sky-muted); margin-right: .08em; }
+  .terms .total .dec { font-size: .42em; letter-spacing: 0; color: var(--sky-muted); }
+  .terms .split { margin: 12px 0 20px; font-size: 14px; color: var(--sky-muted); }
+  .terms .split b { font-weight: 500; color: var(--ink-soft); }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; padding: 16px 0 0; border-top: 1px solid var(--sky-line); }
+  .facts div { min-width: 0; }
+  .facts dt { font: 100 10px/14px var(--accent); letter-spacing: 2px; text-transform: uppercase; color: var(--sky-muted); }
+  .facts dd { margin: 4px 0 0; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; }
+  .facts .route { font: 500 14px/22px var(--mono); }
+  .facts .nr { color: var(--warm); }
+  .terms .state { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 12px 14px; border-radius: 8px; background: var(--sky-deep); font-size: 14px; color: var(--ink-soft); }
+  .terms.done .state { background: rgba(218, 255, 82, .08); color: var(--ink); }
+  .stamp { position: absolute; top: 20px; right: 20px; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--lime); font: 100 10px/1 var(--accent); letter-spacing: 2px; text-transform: uppercase; color: var(--ink); animation: stamp .5s var(--ease); }
+  @keyframes stamp { from { opacity: 0; transform: scale(1.4) rotate(-6deg); } }
+  .wave { display: inline-flex; align-items: center; gap: 3px; height: 18px; flex: none; }
+  .wave i { width: 3px; height: 100%; border-radius: 2px; background: var(--lime); animation: bar 1s ease-in-out infinite; }
+  .wave i:nth-child(2) { animation-delay: -.25s; } .wave i:nth-child(3) { animation-delay: -.5s; } .wave i:nth-child(4) { animation-delay: -.75s; }
+  @keyframes bar { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+  .spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid var(--sky-line); border-top-color: var(--sky); animation: turn .8s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  .tick { width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--lime) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141a00' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; animation: pop .55s var(--ease); }
+  .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--gray); }
+  .terms.is-failed .dot { background: var(--red); }
+
+  .flights { display: flex; flex-direction: column; gap: 6px; }
+  .flight { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 8px; background: var(--sky-raise); font-size: 14px; color: var(--ink-soft); }
+  .flight .num { font: 500 12.5px/1.3 var(--mono); color: var(--sky-muted); }
+  .flight .rt b { font: 400 16px/1 var(--display); color: var(--ink); margin-right: 8px; }
+  .flight .fare { font: 400 17px/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .flight.mine { box-shadow: inset 0 0 0 1px var(--lime); }
+  .flight.mine .num::after { content: "Yours"; display: block; margin-top: 3px; font: 100 9px/12px var(--accent); letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink); }
+  .none { color: var(--sky-muted); font-size: 14px; }
+
+  .nope { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .nope li { position: relative; padding-left: 28px; font-size: 14px; color: var(--ink); }
+  .nope li::before { content: ""; position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--warm); background: linear-gradient(45deg, transparent 44%, var(--warm) 44%, var(--warm) 56%, transparent 56%); }
+  .nope span { display: block; margin-top: 2px; font-size: 13px; color: var(--sky-muted); }
+
+  details.wire { border-top: 1px solid var(--sky-line); padding-top: 16px; }
+  details.wire summary { display: flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; font-size: 13px; color: var(--sky-muted); }
+  details.wire summary::-webkit-details-marker { display: none; }
+  details.wire summary::before { content: "›"; display: inline-block; width: 10px; transition: transform .2s; }
+  details.wire[open] summary::before { transform: rotate(90deg); }
+  details.wire summary a { margin-left: auto; color: var(--sky-muted); text-decoration: none; }
+  details.wire summary a:hover { color: var(--sky); }
+  #wire { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font: 12px/1.5 var(--mono); }
+  #wire li { display: grid; grid-template-columns: 32px 44px minmax(0, 1fr); gap: 6px; padding: 6px 10px; border-radius: 6px; background: var(--sky-surface); }
+  #wire li:first-child { animation: rise .3s var(--ease); }
+  #wire .c2 { color: var(--ok); } #wire .c4 { color: var(--warm); } #wire .c5 { color: var(--red); }
+  #wire .p { overflow-wrap: anywhere; color: var(--ink-soft); }
+  #wire .p em { font: normal 12px var(--body); color: var(--sky-muted); }
+
+  @media (max-width: 1240px) {
+    .flow { grid-template-columns: minmax(0, 1fr); }
+    .trail-wrap { position: static; }
+  }
+  @media (max-width: 900px) {
+    .app { display: block; height: auto; }
+    .talk { height: 100vh; height: 100svh; }
+    .seam { display: none; }
+    .who { grid-template-areas: "orb id mini" "orb id by"; column-gap: 12px; row-gap: 6px; padding: 16px 16px 8px; }
+    #orb { width: 56px; height: 56px; }
+    .name { gap: 8px; }
+    .name b { font-size: 22px; }
+    .who .state { font-size: 14px; }
+    .by { align-self: end; justify-self: end; gap: 6px; padding: 0; font-size: 11px; }
+    .by svg { height: 13px; }
+    .mini { grid-area: mini; justify-self: end; display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 10px; background: none; border: 1px solid var(--hair); border-radius: 999px; cursor: pointer; }
+    .mini i { width: 10px; height: 4px; border-radius: 2px; background: var(--hair-2); transition: background .3s; }
+    .mini i.lit { background: var(--lime); }
+    .mini i.now { background: var(--warm); }
+    .mini.alert { border-color: var(--warm); animation: wait 1.6s infinite; }
+    #transcript { padding: 12px 16px 16px; }
+    .msg-agent { font-size: 17px; }
+    .start h1 { font-size: 32px; }
+    .cues { padding: 2px 0 10px 16px; gap: 10px; }
+    .cues .eyebrow { display: none; }
+    .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-right: 16px; }
+    .chips::-webkit-scrollbar { display: none; }
+    .bar { gap: 10px; padding: 4px 16px calc(16px + env(safe-area-inset-bottom)); }
+    #mic { width: 56px; height: 56px; }
+    .field { height: 52px; }
+    .side { padding: 24px 16px 40px; }
+    .slots { order: -1; }
+    .co { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 12px; }
+    .co .pill { grid-column: 2; justify-self: start; margin-left: 0; }
+    .signin, .terms { padding: 20px; }
+    .signin .code { gap: 6px; }
+    .signin .code span { height: 60px; font-size: 32px; }
+    .signin .code i { flex-basis: 6px; }
+    .terms .total { font-size: 60px; }
+    .stamp { top: 16px; right: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="talk" aria-label="Wren, your agent">
+    <header class="who">
+      <canvas id="orb" aria-hidden="true"></canvas>
+      <div class="id">
+        <div class="name"><b>Wren</b><select id="voice" aria-label="Wren's voice"></select></div>
+        <span class="state" id="state"><i></i><span id="stateText">Not connected</span></span>
+      </div>
+      <a class="by" href="https://gradium.ai" target="_blank" rel="noopener noreferrer"><span>Powered by</span><svg role="img" aria-label="Gradium" viewBox="0 0 1201 262" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M60.7237 245.259C41.8152 234.104 26.9637 218.579 16.1814 198.682C5.39202 178.792 0 156.234 0 131C0 105.773 5.45416 83.2112 16.3625 63.3145C27.2708 43.4286 42.1792 27.8993 61.0877 16.7375C79.9944 5.58271 100.721 0 123.264 0C142.9 0 160.655 4.06533 176.534 12.1889C192.407 20.3195 205.497 31.0549 215.803 44.3952C226.104 57.7389 233.439 71.9285 237.801 86.9673H188.714C183.38 74.8424 174.773 64.8959 162.899 57.1313C151.017 49.3702 137.808 45.4861 123.264 45.4861C108.959 45.4861 96.0497 49.0042 84.5395 56.0367C73.024 63.0764 63.9337 73.0834 57.2687 86.0576C50.5983 99.0389 47.2694 114.021 47.2694 131C47.2694 147.983 50.5983 162.965 57.2687 175.939C63.9337 188.92 73.024 198.927 84.5395 205.96C96.0497 212.999 108.959 216.514 123.264 216.514C136.111 216.514 147.683 213.785 157.99 208.326C168.289 202.868 176.351 195.896 182.169 187.403C187.987 178.913 191.26 170.299 191.988 161.565L193.806 147.375L204.714 159.745H130.174V125.176H239.619V258.361H203.622L199.986 228.884H198.168C193.561 234.47 187.561 239.801 180.17 244.896C172.772 249.992 164.17 254.118 154.353 257.27C144.535 260.419 134.172 262 123.264 262C100.476 262 79.6304 256.421 60.7237 245.259Z" fill="currentColor"/><path d="M255.976 74.2312H294.156L297.792 89.8813H299.61C303.003 85.2758 307.427 81.509 312.881 78.5986C318.335 75.6882 325.062 74.2312 333.063 74.2312H366.878V116.078H335.971C324.336 116.078 315.484 119.174 309.428 125.36C303.365 131.544 300.338 140.584 300.338 152.467V258.361H255.976L255.976 74.2312Z" fill="currentColor"/><path d="M397.604 254.541C387.542 249.57 379.844 242.775 374.514 234.161C369.18 225.554 366.515 215.91 366.515 205.231C366.515 193.348 369.243 182.915 374.697 173.938C380.151 164.965 388.513 157.926 399.785 152.833C411.058 147.737 424.931 145.19 441.42 145.19H485.053V140.826C485.053 130.879 482.019 122.812 475.963 116.626C469.9 110.439 461.656 107.347 451.236 107.347C444.93 107.347 439.357 108.381 434.51 110.439C429.659 112.504 425.84 115.233 423.056 118.626C420.267 122.027 418.387 125.542 417.421 129.181H373.424C374.39 118.992 378.088 109.412 384.513 100.432C390.933 91.4591 399.842 84.2381 411.239 78.7798C422.63 73.3215 435.966 70.5923 451.236 70.5923C467.235 70.5923 481.11 73.5667 492.87 79.5083C504.625 85.4571 513.716 93.7618 520.141 104.437C526.561 115.112 529.776 127.24 529.776 140.826V258.361H491.233L487.597 240.167H485.779C481.655 245.749 474.871 250.781 465.417 255.266C455.964 259.754 445.056 262 432.692 262C419.358 262 407.66 259.509 397.604 254.541ZM464.326 220.696C471.11 217.186 476.263 212.146 479.78 205.597C483.292 199.048 485.053 191.529 485.053 183.035V177.577H445.782C434.147 177.577 425.476 179.759 419.784 184.126C414.085 188.494 411.239 194.442 411.239 201.958C411.239 209.236 413.723 215.057 418.694 219.424C423.658 223.792 430.874 225.974 440.328 225.974C449.537 225.974 457.537 224.218 464.326 220.696Z" fill="currentColor"/><path d="M585.587 249.808C572.616 241.684 562.374 230.341 554.862 215.785C547.346 201.23 543.591 184.734 543.591 166.298C543.591 147.62 547.346 131 554.862 116.444C562.374 101.889 572.616 90.6061 585.587 82.6035C598.552 74.5972 612.915 70.5923 628.676 70.5923C640.55 70.5923 651.037 72.7778 660.128 77.1451C669.218 81.509 676.309 86.9673 681.399 93.5201H683.217V3.63889H727.941V258.361H689.398L685.762 237.619H683.943C678.127 244.896 670.61 250.781 661.401 255.266C652.184 259.754 641.276 262 628.676 262C612.915 262 598.552 257.938 585.587 249.808ZM659.947 213.966C667.219 209.36 672.911 202.992 677.035 194.862C681.154 186.738 683.217 177.215 683.217 166.298C683.217 155.381 681.154 145.801 677.035 137.549C672.911 129.305 667.219 122.994 659.947 118.626C652.674 114.259 644.674 112.077 635.948 112.077C627.222 112.077 619.221 114.259 611.949 118.626C604.677 122.994 598.916 129.305 594.678 137.549C590.434 145.801 588.315 155.381 588.315 166.298C588.315 177.215 590.434 186.738 594.678 194.862C598.916 202.992 604.677 209.36 611.949 213.966C619.221 218.579 627.222 220.881 635.948 220.881C644.674 220.881 652.674 218.579 659.947 213.966Z" fill="currentColor"/><path d="M745.757 1.45342H793.391V42.9382H745.757V1.45342ZM747.211 74.2312H791.573V258.361H747.211V74.2312Z" fill="currentColor"/><path d="M978.106 258.361H978.467V143.862C978.24 145.598 978.106 147.371 978.106 149.194V258.361Z" fill="currentColor"/><path d="M933.747 74.2312V179.034C933.747 186.553 931.985 193.469 928.474 199.773C924.956 206.084 920.111 210.999 913.929 214.513C907.747 218.031 900.777 219.787 893.022 219.787C885.504 219.787 878.715 218.031 872.659 214.513C866.598 210.999 861.87 206.141 858.479 199.958C855.08 193.771 853.388 186.799 853.388 179.034V74.2312H809.027V184.855C809.027 200.139 812.118 213.664 818.3 225.43C824.48 237.199 833.083 246.233 844.115 252.537C855.144 258.844 867.688 262 881.749 262C893.385 262 903.868 259.871 913.201 255.632C922.092 251.589 928.923 246.817 933.748 241.338L933.747 74.2312Z" fill="currentColor"/><path d="M1192.09 106.256C1186.15 95.098 1178.03 86.3668 1167.73 80.0556C1157.42 73.7479 1145.97 70.5923 1133.37 70.5923C1120.28 70.5923 1108.64 73.3215 1098.46 78.7798C1088.28 84.2381 1080.77 90.6062 1075.92 97.884H1074.1C1070.22 91.0966 1063.79 84.8494 1054.83 79.1458C1045.86 73.4494 1035.19 70.5923 1022.83 70.5923C1013.13 70.5923 1004.16 72.7778 995.924 77.1451C988.326 81.1669 982.563 85.6276 978.468 90.4756L978.467 143.862C979.085 139.133 980.527 134.721 982.834 130.634C985.981 125.058 990.225 120.691 995.56 117.535C1000.89 114.387 1006.71 112.806 1013.01 112.806C1019.31 112.806 1024.89 114.259 1029.74 117.173C1034.59 120.083 1038.34 124.266 1041.01 129.724C1043.68 135.183 1045.01 141.679 1045.01 149.195V258.361H1089.73V149.195C1089.73 142.404 1091.25 136.22 1094.28 130.634C1097.31 125.058 1101.49 120.691 1106.83 117.535C1112.16 114.387 1117.97 112.806 1124.28 112.806C1130.82 112.806 1136.46 114.259 1141.19 117.173C1145.91 120.083 1149.61 124.266 1152.28 129.724C1154.94 135.183 1156.28 141.679 1156.28 149.195V258.361H1201V144.099C1201 130.034 1198.03 117.415 1192.09 106.256Z" fill="currentColor"/><path d="M977.382 91.7007H975.564L971.927 74.2312H933.747L933.748 241.338C933.986 241.067 934.245 240.804 934.473 240.529H936.291L939.927 258.361L978.106 258.361V149.194C978.106 147.371 978.24 145.598 978.467 143.862L978.468 90.4756C978.12 90.8869 977.704 91.2831 977.382 91.7007Z" fill="currentColor"/></svg></a>
+      <button type="button" class="mini" id="mini" aria-label="Show what Skyline sees"><i></i><i></i><i></i><i></i><i></i><i></i></button>
+    </header>
+
+    <div id="transcript">
+      <div class="start" id="start">
+        <div class="eyebrow">Your agent · Skyline Air over Poppy</div>
+        <h1>Wren handles your Skyline Air booking. <span>Talk or type.</span></h1>
+        <p>Skyline sees what Wren asks for, step by step, on the right.</p>
+      </div>
+    </div>
+
+    <div class="cues">
+      <span class="eyebrow">Try</span>
+      <div class="chips">
+        <button type="button" class="chip" data-say="Any flights from Paris to Lisbon on Friday?"><small>1</small>Any flights to Lisbon on Friday?</button>
+        <button type="button" class="chip" data-say="Move my Lisbon booking to the evening flight."><small>2</small>Move my booking to the evening flight</button>
+        <button type="button" class="chip" data-say="Yes, go ahead."><small>3</small>Yes, go ahead</button>
+        <button type="button" class="chip" data-say="Can you upgrade my seat with miles?" data-focus="nopeSlot"><small>4</small>Upgrade my seat with miles</button>
+      </div>
+    </div>
+
+    <form class="bar" id="bar" autocomplete="off">
+      <button type="button" class="round" id="mic" aria-label="Turn on the microphone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="slash" d="M4 4l16 16"/></svg>
+      </button>
+      <div class="field">
+        <input id="text" placeholder="Message Wren" maxlength="300" aria-label="Message Wren">
+        <button type="submit" class="round" id="send" aria-label="Send" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+      <button type="button" class="round" id="hang" aria-label="End call" title="End call" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <div class="seam" aria-hidden="true"><span>Poppy</span></div>
+
+  <aside class="side" aria-label="What Skyline sees">
+    <div class="co">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></span>
+      <div class="co-id">
+        <div class="eyebrow">What the airline sees</div>
+        <div class="row">
+          <b>Skyline Air</b>
+          <span class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span id="dom">not discovered yet</span></span>
+        </div>
+      </div>
+      <span class="pill" id="pill">signed out</span>
+    </div>
+
+    <div class="flow">
+      <div class="trail-wrap">
+        <div class="eyebrow">Poppy trust trail</div>
+        <ol class="trail" id="trail">
+          <li data-step="found"><b>Finds Skyline</b><div>Reads <code>/.well-known/poppy.json</code></div></li>
+          <li data-step="anon"><b>Stays anonymous</b><div>Skyline only gets a per-company ID</div></li>
+          <li data-step="signin"><b>Signs in without your password</b><div>You approve on Skyline's own page</div></li>
+          <li data-step="terms"><b>Gets the exact terms</b><div>Skyline states the price before acting</div></li>
+          <li data-step="yes"><b>Waits for your yes</b><div>Your answer goes to Skyline as the approval</div></li>
+          <li data-step="done"><b>Done, exactly once</b><div>A retry can't charge you twice</div></li>
+        </ol>
+      </div>
+
+      <div class="slots">
+        <div id="signinSlot"></div>
+        <div id="termsSlot"></div>
+        <div id="flightsSlot"></div>
+        <div id="nopeSlot"></div>
+      </div>
+    </div>
+
+    <details class="wire">
+      <summary><span id="wireCount">0 requests</span> to Skyline <a id="skylineView" href="https://skyline.localhost:8443/console" target="_blank" rel="noopener">Skyline's console ↗</a></summary>
+      <ol id="wire"></ol>
+    </details>
+  </aside>
+</div>
+
+<script src="/static/js/opus-encoder.js"></script>
+<script src="/static/js/audio-processor.js"></script>
+<script src="/static/js/synced-audio-player.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const transcript = $('transcript');
+
+// ---- Audio in --------------------------------------------------------------
+// gradbot takes one audio stream. We hand it a mixer: the mic (when on) plus
+// typed messages, which the server speaks with Gradium TTS. Wren hears both the same way.
+let mix = null;
+function makeMixer() {
+  const ctx = new AudioContext({ sampleRate: 48000 });
+  const dest = ctx.createMediaStreamDestination();
+  const meter = ctx.createAnalyser(); meter.fftSize = 512;
+  const sink = ctx.createGain(); sink.gain.value = 0; // an analyser only runs when wired to an output
+  meter.connect(sink); sink.connect(ctx.destination);
+  return { ctx, dest, meter, mic: null, micStream: null };
+}
+let micOn = false;
+async function setMic(on) {
+  if (on && !mix.mic) {
+    mix.micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true },
+    });
+    mix.mic = mix.ctx.createMediaStreamSource(mix.micStream);
+    mix.mic.connect(mix.meter);
+  }
+  if (on) mix.mic.connect(mix.dest); else mix.mic?.disconnect(mix.dest);
+  micOn = on;
+  $('mic').classList.toggle('on', on);
+  $('mic').classList.toggle('muted', !on);
+  $('mic').setAttribute('aria-label', on ? 'Mute the microphone' : 'Turn on the microphone');
+  setState(on ? 'Listening' : 'Mic off · type to Wren', true);
+}
+function meterLoop() {
+  if (!mix) return;
+  const data = new Uint8Array(mix.meter.fftSize);
+  mix.meter.getByteTimeDomainData(data);
+  let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+  $('mic').style.setProperty('--lvl', micOn ? Math.min(1, peak / 40).toFixed(2) : 0);
+  requestAnimationFrame(meterLoop);
+}
+
+// ---- Call ------------------------------------------------------------------
+let ws = null, player = null, ready = null;
+function connect(byTyping) {
+  if (ready) return ready;
+  ready = (async () => {
+    setState('Connecting…');
+    mix = makeMixer(); await mix.ctx.resume(); meterLoop();
+    const audioConfig = await fetch('/api/audio-config').then((r) => r.json());
+    player = new SyncedAudioPlayer({
+      basePath: '/static/js', sampleRate: 24000, pcmOutput: audioConfig.pcm || false, echoCancellation: true,
+      onEncodedAudio: (opus) => { if (ws?.readyState === WebSocket.OPEN) ws.send(opus); },
+      onText: ({ text, turnIdx, isUser }) => appendTranscript(text, turnIdx, isUser),
+      onEvent: (_t, msg) => handleCustom(msg),
+    });
+    const realGetUserMedia = navigator.mediaDevices.getUserMedia;
+    navigator.mediaDevices.getUserMedia = async () => mix.dest.stream;
+    try { await player.start(); } finally { navigator.mediaDevices.getUserMedia = realGetUserMedia; }
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/chat`);
+    ws.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        try {
+          const msg = JSON.parse(event.data);
+          if (CUSTOM.has(msg.type)) { handleCustom(msg); return; }
+          if (msg.type === 'error') setState(msg.message || 'Error');
+        } catch (_) { /* not JSON */ }
+      }
+      player?.handleMessage(event.data);
+    };
+    ws.onclose = () => hangUp();
+    await new Promise((ok, fail) => { ws.onopen = ok; ws.onerror = () => fail(new Error('Could not reach Wren')); });
+    ws.send(JSON.stringify({ type: 'start', speaks_first: !byTyping, voice_id: $('voice').value }));
+    $('hang').hidden = false;
+    $('start')?.remove();
+    await setMic(!byTyping);
+  })();
+  ready.catch((e) => { hangUp(); setState(e.message); });
+  return ready;
+}
+
+function hangUp() {
+  if (!ready) return;
+  ready = null;
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stop' }));
+  ws?.close(); ws = null;
+  player?.stop(); player = null;
+  mix?.micStream?.getTracks().forEach((t) => t.stop());
+  mix?.ctx.close(); mix = null; micOn = false;
+  $('mic').classList.remove('on', 'muted');
+  $('mic').style.setProperty('--lvl', 0);
+  $('hang').hidden = true;
+  quiet();
+  setState('Call ended');
+}
+
+function setState(text, live = false) {
+  $('stateText').textContent = text;
+  $('state').classList.toggle('live', live);
+}
+
+$('mic').addEventListener('click', async () => {
+  try { if (!ready) await connect(false); else { await ready; await setMic(!micOn); } }
+  catch (e) { setState(e.message); }
+});
+$('hang').addEventListener('click', hangUp);
+
+// ---- Voice -----------------------------------------------------------------
+fetch('/api/wren-voices').then((r) => r.json()).then((voices) => {
+  $('voice').innerHTML = voices.map((v) => `<option value="${esc(v.id)}">${esc(v.name)} · ${esc(v.note)}</option>`).join('');
+});
+$('voice').addEventListener('change', () => {
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'config', voice_id: $('voice').value }));
+});
+
+// ---- Typing ----------------------------------------------------------------
+let hideHeardUser = false; // show what you typed, not the speech-to-text of it
+async function sendTyped(text) {
+  text = text.trim();
+  if (!text) return;
+  $('text').value = ''; $('send').disabled = true;
+  try {
+    await connect(true);
+    const bubble = newBubble('msg msg-user typed'); bubble.textContent = text;
+    userBubble = bubble; hadAssistantBubble = false; hideHeardUser = true;
+    const r = await fetch('/api/say', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, sid: company?.sid || '' }) });
+    if (!r.ok) throw new Error('Could not send that message');
+    const audio = await mix.ctx.decodeAudioData(await r.arrayBuffer());
+    const src = mix.ctx.createBufferSource();
+    src.buffer = audio; src.connect(mix.dest); src.start();
+  } catch (e) { setState(e.message); }
+}
+$('text').addEventListener('input', () => { $('send').disabled = !$('text').value.trim(); });
+$('bar').addEventListener('submit', (e) => { e.preventDefault(); sendTyped($('text').value); });
+document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => sendTyped(c.dataset.say)));
+
+// ---- Transcript ------------------------------------------------------------
+let turnBubbles = {}, userBubble = null, hadAssistantBubble = false;
+function newBubble(cls) {
+  const el = document.createElement('div');
+  el.className = cls;
+  transcript.appendChild(el);
+  transcript.scrollTop = transcript.scrollHeight;
+  return el;
+}
+function appendTranscript(text, turnIdx, isUser) {
+  if (isUser) {
+    if (hideHeardUser) return;
+    if (!userBubble || hadAssistantBubble) { userBubble = newBubble('msg msg-user'); hadAssistantBubble = false; }
+    userBubble.textContent += text + ' ';
+  } else {
+    hideHeardUser = false;
+    speak();
+    let b = turnBubbles[turnIdx];
+    if (!b) { b = turnBubbles[turnIdx] = newBubble('msg msg-agent'); hadAssistantBubble = true; }
+    b.textContent += text + ' ';
+  }
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+// ---- Speaking state --------------------------------------------------------
+// Wren's words arrive in step with its audio, so "words are arriving" means "Wren is talking".
+let speakTimer = 0;
+function speak() {
+  document.body.classList.add('speaking'); $('state').classList.add('speaking');
+  clearTimeout(speakTimer); speakTimer = setTimeout(quiet, 1300);
+}
+function quiet() {
+  clearTimeout(speakTimer);
+  document.body.classList.remove('speaking'); $('state').classList.remove('speaking');
+}
+
+// ---- What Skyline sees -----------------------------------------------------
+const CUSTOM = new Set(['company', 'poppy_log', 'flights', 'bookings', 'sign_in', 'approval']);
+let company = null, myFlight = null, lastFlights = null;
+const day = (d) => new Date(d + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const money = (a) => { const n = Number(a); return Number.isFinite(n) ? n.toFixed(2) : String(a ?? ''); };
+function step(name, cls = 'lit', detail) {
+  const li = document.querySelector(`[data-step="${name}"]`);
+  li.classList.remove('lit', 'now'); li.classList.add(cls);
+  if (detail) li.querySelector('div').innerHTML = detail;
+}
+function handleCustom(msg) {
+  switch (msg.type) {
+    case 'company':
+      company = msg;
+      $('dom').textContent = msg.domain;
+      $('skylineView').href = msg.issuer + '/console';
+      step('found', 'lit', `Read <code>poppy.json</code> at <code>${esc(msg.domain)}</code>`);
+      step('anon', 'lit', `Skyline knows you as <code>${esc(msg.user_id)}</code>, no name or email`);
+      if (msg.excluded?.length) $('nopeSlot').innerHTML = `<div class="card"><h3>Skyline won't let agents do these</h3><ul class="nope">${
+        msg.excluded.map((t) => `<li>${esc(t.task)}${t.alternative ? `<span>${esc(t.alternative.instructions)}</span>` : ''}</li>`).join('')}</ul></div>`;
+      break;
+    case 'poppy_log': addWire(msg); break;
+    case 'flights': lastFlights = msg.flights; renderFlights(); break;
+    case 'bookings': myFlight = msg.bookings[0]; renderFlights(); break;
+    case 'sign_in': renderSignIn(msg); break;
+    case 'approval': renderTerms(msg); break;
+  }
+}
+
+function renderFlights() {
+  if (!lastFlights) return;
+  $('flightsSlot').innerHTML = lastFlights.length ? `<div class="card"><h3>Flights · ${esc(day(lastFlights[0].date))}</h3><div class="flights">${
+    lastFlights.map((f) => `<div class="flight ${myFlight?.flight === f.flight ? 'mine' : ''}"><span class="num">${esc(f.flight)}</span>
+      <span class="rt"><b>${esc(f.departs)}</b>${esc(f.origin_city)} → ${esc(f.destination_city)}</span><span class="fare">€${esc(Math.round(f.fare.amount))}</span></div>`).join('')}</div></div>`
+    : '<div class="card"><h3>Flights</h3><div class="none">None on that day.</div></div>';
+}
+
+const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+function renderSignIn(msg) {
+  if (msg.status === 'waiting') {
+    step('signin', 'now', `Asked for <code>${esc(msg.scopes.join(' '))}</code>`);
+    const cells = [...String(msg.user_code ?? '')].map((ch, i) => /[a-z0-9]/i.test(ch) ? `<span style="--i:${i}">${esc(ch)}</span>` : '<i></i>').join('');
+    $('signinSlot').innerHTML = `<div class="card signin"><h3>Approve Wren at Skyline</h3>
+      <div class="code" role="img" aria-label="Code ${esc(msg.user_code)}">${cells}</div>
+      <p>Enter this code on Skyline's own page. Wren never sees your password.</p>
+      <div class="row"><a class="btn" href="${esc(msg.link)}" target="_blank" rel="noopener">Open Skyline ${ARROW}</a><span class="waiting">Waiting for you</span></div></div>`;
+  } else if (msg.status === 'approved') {
+    step('signin', 'lit', `You approved <code>${esc(msg.scope)}</code> on Skyline's page`);
+    $('pill').textContent = 'signed in'; $('pill').classList.add('on');
+    $('signinSlot').innerHTML = '';
+  } else {
+    step('signin', 'now', `Sign-in ${esc(msg.status)}. Ask Wren to try again.`);
+    $('signinSlot').innerHTML = '';
+  }
+}
+
+function renderTerms(msg) {
+  const op = msg.operation, t = op.terms;
+  const rev = op.revision.split('-').slice(-1)[0];
+  const states = {
+    asking: `<span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Wren is reading these to you. Nothing happens until you say yes.</span>`,
+    sending: `<span class="spin" aria-hidden="true"></span><span>You said "${esc(msg.user_words)}". Sending your approval…</span>`,
+    done: `<span class="tick" aria-hidden="true"></span><span>Done. Charged €${esc(money(msg.result?.charged?.amount))} to ${esc(msg.result?.charged_to)}, once.</span>`,
+    declined_by_user: '<span class="dot" aria-hidden="true"></span><span>You said no. Nothing changed.</span>',
+    failed: `<span class="dot" aria-hidden="true"></span><span>Skyline didn't make the change.</span>`,
+  };
+  step('terms', 'lit', `Operation <code>${esc(op.operation_id.slice(0, 8))}</code>, revision ${esc(rev)}`);
+  if (msg.status === 'asking') step('yes', 'now', 'Listening for a clear yes');
+  if (msg.status === 'sending') step('yes', 'lit', `"${esc(msg.user_words)}", sent as <code>approver=user, input_type=${esc(msg.approval.input_type)}</code>`);
+  if (msg.status === 'declined_by_user') step('yes', 'now', 'You said no');
+  if (msg.status === 'done') step('done', 'lit', `Now on ${esc(t.to_flight)}. A retry with the same approval changes nothing.`);
+
+  // Same operation and revision: update in place so the card doesn't re-enter on every status.
+  const key = `${op.operation_id}:${rev}`;
+  let card = $('termsSlot').querySelector('.terms');
+  if (!card || card.dataset.key !== key) {
+    const [whole, dec] = money(t.total.amount).split('.');
+    $('termsSlot').innerHTML = `<div class="card terms" data-key="${esc(key)}"><h3>Skyline's terms</h3>
+      <div class="total" aria-label="Total €${esc(money(t.total.amount))}"><span class="cur">€</span>${esc(whole)}${dec ? `<span class="dec">.${esc(dec)}</span>` : ''}</div>
+      <div class="split"><b>€${esc(money(t.fare_difference.amount))}</b> fare difference + <b>€${esc(money(t.change_fee.amount))}</b> change fee</div>
+      <dl class="facts">
+        <div><dt>Change</dt><dd class="route">${esc(t.from_flight)} → ${esc(t.to_flight)}</dd></div>
+        <div><dt>Departs</dt><dd>${esc(day(t.date))} · ${esc(t.new_departure)}</dd></div>
+        <div><dt>Card</dt><dd>${esc(t.charged_to)}</dd></div>
+        <div><dt>Refunds</dt><dd class="${t.refundable ? '' : 'nr'}">${t.refundable ? 'Refundable' : 'Non-refundable'}</dd></div>
+      </dl>
+      <div class="state"></div></div>`;
+    card = $('termsSlot').querySelector('.terms');
+  }
+  const done = msg.status === 'done';
+  card.className = `card terms is-${msg.status}${done ? ' done' : ''}`;
+  card.querySelector('.state').innerHTML = states[msg.status] || esc(msg.status);
+  card.querySelector('.stamp')?.remove();
+  if (done) card.insertAdjacentHTML('beforeend', '<span class="stamp">Done · once</span>');
+}
+
+let wireCount = 0;
+function addWire(e) {
+  const u = new URL(e.url);
+  const li = document.createElement('li');
+  const c = String(e.status)[0];
+  li.innerHTML = `<span class="c${c}">${e.status}</span><span>${esc(e.method)}</span><span class="p">${esc(u.pathname)} <em>${esc(e.note)}${e.signed_in ? ' · token' : ''}</em></span>`;
+  $('wire').prepend(li);
+  $('wireCount').textContent = `${++wireCount} request${wireCount === 1 ? '' : 's'}`;
+  pulseSeam();
+}
+
+// ---- Presence: Wren's particle orb -----------------------------------------
+// Reacts to your mic level while listening and to Wren's own speech while it talks.
+const orb = $('orb'), og = orb.getContext('2d');
+const RINGS = [[10, .34, '#daff52'], [16, .54, '#daff52'], [22, .74, '#91fffa']];
+let env = 0;
+function drawOrb(now) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), px = Math.round(orb.clientWidth * dpr);
+  if (px && orb.width !== px) orb.width = orb.height = px;
+  const w = orb.width, c = w / 2, live = !!ready;
+  const lvl = micOn ? parseFloat($('mic').style.getPropertyValue('--lvl')) || 0 : 0;
+  const talk = document.body.classList.contains('speaking') ? .3 + .5 * (.5 + .5 * Math.sin(now / 95)) * (.55 + .45 * Math.sin(now / 410 + 1)) : 0;
+  const target = Math.max(lvl, talk, live ? .06 + .04 * Math.sin(now / 900) : 0);
+  env += (target - env) * (target > env ? .35 : .07);
+  og.clearRect(0, 0, w, w);
+  RINGS.forEach(([n, rr, col], k) => {
+    og.fillStyle = live ? col : '#707070';
+    for (let j = 0; j < n; j++) {
+      const a = (j / n) * Math.PI * 2 + (now / (2600 - k * 500)) * (k % 2 ? -1 : 1);
+      const r = c * rr * (.9 + env * .2) * (1 + env * .15 * Math.sin(a * 3 + now / 160 + k * 1.7));
+      og.globalAlpha = live ? Math.min(1, .3 + env * 1.2 + (k ? 0 : .3)) : .35;
+      og.beginPath(); og.arc(c + Math.cos(a) * r, c + Math.sin(a) * r, (1.1 + k * .25 + env * 1.3) * dpr, 0, Math.PI * 2); og.fill();
+    }
+  });
+  og.globalAlpha = 1; og.fillStyle = live ? '#daff52' : '#707070';
+  og.beginPath(); og.arc(c, c, (3 + env * 5) * dpr, 0, Math.PI * 2); og.fill();
+  requestAnimationFrame(drawOrb);
+}
+requestAnimationFrame(drawOrb);
+
+// ---- Poppy seam: a dot crosses for every request to Skyline ---------------
+function pulseSeam() {
+  const seam = document.querySelector('.seam');
+  if (!seam || seam.offsetParent === null) return;
+  const dot = document.createElement('b');
+  dot.addEventListener('animationend', () => dot.remove());
+  seam.appendChild(dot);
+  seam.classList.remove('ping'); void seam.offsetWidth; seam.classList.add('ping');
+}
+
+// ---- Demo cues: what to say next -------------------------------------------
+const chips = [...document.querySelectorAll('.chip')];
+let cue = 0;
+function setCue(i) {
+  cue = Math.max(cue, i);
+  chips.forEach((c, k) => { c.classList.toggle('used', k < cue); c.classList.toggle('next', k === cue); });
+  const next = chips[cue], rail = next?.parentElement;
+  if (next && rail.scrollWidth > rail.clientWidth) rail.scrollTo({ left: next.offsetLeft - rail.offsetLeft - 8, behavior: 'smooth' });
+}
+chips.forEach((c, k) => c.addEventListener('click', () => {
+  setCue(k + 1);
+  if (c.dataset.focus) setTimeout(() => flashSlot(c.dataset.focus), 2500);
+}));
+function flashSlot(id) {
+  const card = $(id)?.querySelector('.card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+}
+setCue(0);
+new MutationObserver(() => {
+  if ($('flightsSlot').childElementCount) setCue(1);
+  if ($('signinSlot').childElementCount || $('termsSlot').childElementCount) setCue(2);
+  if ($('termsSlot').querySelector('.done')) setCue(3);
+  $('mini').classList.toggle('alert', !!document.querySelector('.signin, .terms.is-asking'));
+}).observe(document.querySelector('.slots'), { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+
+// ---- Phone: a mini trail in Wren's header ----------------------------------
+const trailItems = [...document.querySelectorAll('#trail li')];
+const minis = [...document.querySelectorAll('#mini i')];
+new MutationObserver(() => {
+  trailItems.forEach((li, k) => { minis[k].className = li.classList.contains('lit') ? 'lit' : li.classList.contains('now') ? 'now' : ''; });
+  $('trail').classList.toggle('complete', trailItems.every((li) => li.classList.contains('lit')));
+}).observe($('trail'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+$('mini').addEventListener('click', () => document.querySelector('.side').scrollIntoView({ behavior: 'smooth' }));
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Optional: copy to config.yaml (gitignored). Keys usually go in .env, which `just` loads.
+
+llm:
+  # model: "gpt-4o-mini"                       # or LLM_MODEL
+  # base_url: "https://api.openai.com/v1"      # or LLM_BASE_URL
+  # api_key: "sk-..."                          # or LLM_API_KEY
+
+gradium:
+  # api_key: "..."                             # or GRADIUM_API_KEY
+
+stt:
+  flush_duration_s: 0.5
+
+session:
+  silence_timeout_s: 0.0

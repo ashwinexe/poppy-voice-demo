@@ -1,0 +1,17 @@
+[project]
+name = "poppy-voice-demo"
+version = "0.1.0"
+description = "A voice personal agent (Gradium + gradbot) that speaks Personal Agent Protocol to a mock airline."
+requires-python = ">=3.12"
+dependencies = [
+    "gradbot",
+    "fastapi",
+    "uvicorn[standard]",
+    "httpx",
+    "cryptography",
+    "certifi",
+    "python-multipart",
+]
+
+[tool.uv]
+package = false

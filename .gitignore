@@ -1,0 +1,6 @@
+.venv/
+.poppy/
+__pycache__/
+config.yaml
+.DS_Store
+.env
