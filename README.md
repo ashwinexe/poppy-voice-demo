@@ -4,7 +4,8 @@ Wren is a voice personal agent built on Gradium's [gradbot](https://github.com/g
 
 What the demo shows:
 
-<img width="1582" height="940" alt="Screenshot 2026-11-25 at 1 33 12 PM" src="https://github.com/user-attachments/assets/2164ab5a-7bdf-4660-8bbb-175cb13a6a79" />
+<img width="1582" height="940" alt="Screenshot 2026-11-25 at 1 59 16 PM" src="https://github.com/user-attachments/assets/1c6fad3b-760b-4f34-aa6c-889ce9ddc6b1" />
+
 
 1. **Anonymous search.** "Any flights from Paris to Lisbon on Friday?" Skyline only sees a pseudonymous user ID.
 2. **Device Sign-In.** "Move my booking to the evening flight." Wren reads out a code, you approve on Skyline's own page, and Wren never sees your password.
